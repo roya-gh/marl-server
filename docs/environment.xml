@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<environment>
+    <title>Pray and Hunter</title>
+    <description>A classical path finding problem</description>
+    <states>
+        <state id="0" title="S0"/>
+        <state id="1" title="S1"/>
+        <state id="2" title="S2"/>
+    </states>
+    <actions>
+        <action id="0" from="S0" title="A0">
+            <transition probability="0.1" to="S1" reward="0.9"/>
+            <transition probability="0.9" to="S2" reward="0.1"/>
+        </action>
+        <action id="1" from="S1" title="A1">
+            <transition probability="1" to="S2" reward="-0.1"></transition>
+        </action>
+        <action id="2" from="S2" title="A2">
+            <transition probability="1" to="S0" reward="10"></transition>
+        </action>
+    </actions>
+</environment>

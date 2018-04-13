@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+<xs:annotation>
+    <xs:documentation xml:lang="en">
+    Markov Decision Process Document Format
+    </xs:documentation>
+</xs:annotation>
+
+<xs:simpleType name="id_type">
+    <xs:restriction base="xs:nonNegativeInteger"/>
+</xs:simpleType>
+
+<xs:simpleType name="title_type">
+    <xs:restriction base="xs:string">
+        <xs:pattern value="[A-Za-z_][A-Za-z0-9_]*"/>
+    </xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="state_pointer_type">
+    <xs:restriction base="xs:string">
+        <xs:pattern value="[A-Za-z_][A-Za-z0-9_]*"/>
+    </xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="probability_type">
+    <xs:restriction base="xs:decimal">
+        <xs:minInclusive value="0.0"/>
+        <xs:maxInclusive value="1.0"/>
+    </xs:restriction>
+</xs:simpleType>
+
+<xs:element name="environment">
+<xs:complexType>
+    <xs:sequence>
+        <xs:element name="title" type="xs:string" maxOccurs="1" minOccurs="1"/>
+        <xs:element name="description" type="xs:string" maxOccurs="1" minOccurs="1"/>
+        <xs:element name="states" maxOccurs="1" minOccurs="1">
+            <xs:complexType>
+                <xs:sequence>
+                    <xs:element name="state" minOccurs="1" maxOccurs="unbounded">
+                        <xs:complexType>
+                            <xs:attribute name="id" type="id_type" use="required"/>
+                            <xs:attribute name="title" type="title_type" use="required"/>
+                        </xs:complexType>
+                    </xs:element>
+                </xs:sequence>
+            </xs:complexType>
+        </xs:element>
+        <xs:element name="actions" maxOccurs="1" minOccurs="1">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="action" minOccurs="1" maxOccurs="unbounded">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="transition" minOccurs="1" maxOccurs="unbounded">
+                                <xs:complexType>
+                                    <xs:attribute name="to" type="state_pointer_type" use="required"/>    
+                                    <xs:attribute name="probability" type="probability_type" use="required"/>    
+                                    <xs:attribute name="reward" type="xs:decimal" use="required"/>    
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                        <xs:attribute name="id" type="id_type" use="required"/>    
+                        <xs:attribute name="title" type="title_type" use="required"/>    
+                        <xs:attribute name="from" type="state_pointer_type" use="required"/>    
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    </xs:sequence>
+</xs:complexType>
+</xs:element>
+
+</xs:schema>
