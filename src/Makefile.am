@@ -38,7 +38,8 @@ marl_server_LDADD = \
 marl_server_SOURCES = \
     server.cpp \
     server.hpp \
+    semaphore.hpp \
+    semaphore.cpp \
+    threadsafe-queue.hpp \
     definitions.hpp \
-    concurrentqueue.h \
-    blockingconcurrentqueue.h \
     main.cpp

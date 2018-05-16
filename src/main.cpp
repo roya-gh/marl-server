@@ -90,7 +90,10 @@ int main(int argc, char* argv[]) {
         print_usage();
         return -1;
     }
-    marl::server s{host, port, problem_path, agents};
+    marl::server s;
+    s.initialize(host, port, problem_path, agents);
     s.start();
+    s.wait();
+    s.stop();
     return 0;
 }

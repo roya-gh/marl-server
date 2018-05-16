@@ -18,6 +18,9 @@
  * along with marl_server.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef MARL_SERVER_HPP
+#define MARL_SERVER_HPP
+
 #include <string>
 #include <map>
 #include <cstdint>
@@ -28,20 +31,20 @@
 #include <forward_list>
 #include <cpnet/cpnet-network.h>
 #include <marl-protocols/response-base.hpp>
-#include "blockingconcurrentqueue.h"
+#include <marl-protocols/action-select-request.hpp>
+#include <marl-protocols/action-select-response.hpp>
+#include "threadsafe-queue.hpp"
 
 namespace marl {
-
-using response_queue_t =
-    moodycamel::BlockingConcurrentQueue<std::unique_ptr<marl::response_base>>;
 
 class server {
 public:
     server();
-    server(const std::string& host, uint16_t port,
-           const std::string& problem_path, uint32_t agents);
+    void initialize(const std::string& host, uint16_t port,
+                    const std::string& problem_path, uint32_t agents);
     ~server();
     void start();
+    void wait();
     void stop();
     /**
        Thread callbacks for reading data from remote sockets.
@@ -56,6 +59,11 @@ public:
       */
     std::unique_ptr<message_base> read_message(socket_t socket) const;
 private:
+    void terminate_agent(uint32_t agent_id) const;
+    bool send_start(socket_t socket) const;
+    // Process messages
+    void process(const marl::action_select_req&) const;
+    void process(const marl::action_select_rsp&) const;
     std::string m_host;
     uint16_t m_port;
     socket_t m_server;
@@ -80,7 +88,8 @@ private:
        Map of (agent id, request number) pairs to a vector of responses. This will
        be used as a buffer to determine completed response vectors.
     */
-    std::map<std::pair<uint32_t, uint32_t>, std::forward_list<marl::response_base*>> m_response_map;
+    mutable std::map<std::pair<uint32_t, uint32_t>, /* requester id, request id */
+             std::vector<action_select_rsp>*> m_response_map;
 
 
     /**
@@ -88,8 +97,11 @@ private:
        messages. This will be used as a buffer to transmit accumulated
        responses to asking agents.
     */
-    std::map<uint32_t, response_queue_t> m_response_queue_map;
+    std::map<uint32_t, queue<action_select_rsp>*> m_response_queue_map;
+    std::map<uint32_t, queue<action_select_req>*> m_request_queue_map;
 
 
 };
 }
+
+#endif // MARL_SERVER_HPP

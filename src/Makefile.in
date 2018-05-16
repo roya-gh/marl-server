@@ -120,7 +120,7 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_marl_server_OBJECTS = marl_server-server.$(OBJEXT) \
-	marl_server-main.$(OBJEXT)
+	marl_server-semaphore.$(OBJEXT) marl_server-main.$(OBJEXT)
 marl_server_OBJECTS = $(am_marl_server_OBJECTS)
 am__DEPENDENCIES_1 =
 marl_server_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
@@ -314,9 +314,10 @@ marl_server_LDADD = \
 marl_server_SOURCES = \
     server.cpp \
     server.hpp \
+    semaphore.hpp \
+    semaphore.cpp \
+    threadsafe-queue.hpp \
     definitions.hpp \
-    concurrentqueue.h \
-    blockingconcurrentqueue.h \
     main.cpp
 
 all: all-am
@@ -406,6 +407,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/marl_server-main.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/marl_server-semaphore.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/marl_server-server.Po@am__quote@
 
 .cpp.o:
@@ -437,6 +439,20 @@ marl_server-server.obj: server.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='server.cpp' object='marl_server-server.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(marl_server_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o marl_server-server.obj `if test -f 'server.cpp'; then $(CYGPATH_W) 'server.cpp'; else $(CYGPATH_W) '$(srcdir)/server.cpp'; fi`
+
+marl_server-semaphore.o: semaphore.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(marl_server_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT marl_server-semaphore.o -MD -MP -MF $(DEPDIR)/marl_server-semaphore.Tpo -c -o marl_server-semaphore.o `test -f 'semaphore.cpp' || echo '$(srcdir)/'`semaphore.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/marl_server-semaphore.Tpo $(DEPDIR)/marl_server-semaphore.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='semaphore.cpp' object='marl_server-semaphore.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(marl_server_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o marl_server-semaphore.o `test -f 'semaphore.cpp' || echo '$(srcdir)/'`semaphore.cpp
+
+marl_server-semaphore.obj: semaphore.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(marl_server_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT marl_server-semaphore.obj -MD -MP -MF $(DEPDIR)/marl_server-semaphore.Tpo -c -o marl_server-semaphore.obj `if test -f 'semaphore.cpp'; then $(CYGPATH_W) 'semaphore.cpp'; else $(CYGPATH_W) '$(srcdir)/semaphore.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/marl_server-semaphore.Tpo $(DEPDIR)/marl_server-semaphore.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='semaphore.cpp' object='marl_server-semaphore.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(marl_server_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o marl_server-semaphore.obj `if test -f 'semaphore.cpp'; then $(CYGPATH_W) 'semaphore.cpp'; else $(CYGPATH_W) '$(srcdir)/semaphore.cpp'; fi`
 
 marl_server-main.o: main.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(marl_server_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT marl_server-main.o -MD -MP -MF $(DEPDIR)/marl_server-main.Tpo -c -o marl_server-main.o `test -f 'main.cpp' || echo '$(srcdir)/'`main.cpp
