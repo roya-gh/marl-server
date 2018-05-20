@@ -49,15 +49,11 @@ public:
     /**
        Thread callbacks for reading data from remote sockets.
     */
-    void reader(uint32_t agent_id) const;
+    void reader(socket_t s);
     /**
        Thread callbacks for writing data to remote sockets.
     */
-    void writer(uint32_t agent_id) const;
-    /**
-      Helper functions
-      */
-    std::unique_ptr<message_base> read_message(socket_t socket) const;
+    void writer(socket_t s);
 private:
     void terminate_agent(uint32_t agent_id) const;
     bool send_start(socket_t socket) const;
@@ -89,7 +85,7 @@ private:
        be used as a buffer to determine completed response vectors.
     */
     mutable std::map<std::pair<uint32_t, uint32_t>, /* requester id, request id */
-             std::vector<action_select_rsp>*> m_response_map;
+            std::vector<action_select_rsp>*> m_response_map;
 
 
     /**
@@ -100,6 +96,10 @@ private:
     std::map<uint32_t, queue<action_select_rsp>*> m_response_queue_map;
     std::map<uint32_t, queue<action_select_req>*> m_request_queue_map;
 
+    /**
+       Waiter for all agents to come online
+    */
+    std::atomic_bool m_all_agents_ready;
 
 };
 }
