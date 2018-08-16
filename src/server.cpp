@@ -31,6 +31,9 @@
 #include <marl-protocols/join-request-impl.hpp>
 #include <marl-protocols/join-response-impl.hpp>
 #include <marl-protocols/message-utilities.hpp>
+#include <marl-protocols/terminate-response.hpp>
+#include <marl-protocols/terminate-response-impl.hpp>
+#include <marl-protocols/terminate-request-impl.hpp>
 #include <cereal/archives/binary.hpp>
 
 using level = flog::level_t;
@@ -88,13 +91,19 @@ void marl::server::start() {
             agent_count++;
         }
         all_sockets.push_back(new_socket);
-        m_readers.emplace_front(&server::reader, this, new_socket);
+        m_starters.emplace_front(&server::starter, this, new_socket);
     }
-//    if(agent_count == m_agent_count) {
-//        for(socket_t& s : all_sockets) {
-//            //m_writers.emplace_front(&server::writer, this, s);
-//        }
-//    }
+    // Wait for connection negotiations to complete
+    for(std::thread& t : m_starters) {
+        t.join();
+    }
+    if(agent_count == m_agent_count) {
+        l->log(level::TRACE, "All agents are connected and ready. Initiating IO threads...");
+        for(auto& entry : m_socket_map) {
+            m_readers.emplace_front(&server::reader, this, entry.first /*Agent ID*/);
+            m_writers.emplace_front(&server::writer, this, entry.first /*Agent ID*/);
+        }
+    }
 }
 
 void marl::server::wait() {
@@ -111,10 +120,9 @@ void marl::server::stop() {
     l->flush(std::chrono::milliseconds{100});
 }
 
-void marl::server::reader(socket_t s) {
+void marl::server::starter(socket_t s) {
     flog::logger* l = flog::logger::instance();
     l->log(level::TRACE, "Initiating reader thread...");
-    uint32_t id;
     join_req req;
     join_rsp rsp;
     if(!receive_message_helper<marl::join_req>(req, s)) {
@@ -138,26 +146,79 @@ void marl::server::reader(socket_t s) {
             m_response_queue_map.insert(std::make_pair(req.agent_id, new queue<action_select_rsp> {}));
             m_request_queue_map.insert(std::make_pair(req.agent_id, new queue<action_select_req> {}));
             rsp.success = true;
-            id = req.agent_id;
         }
         if(m_socket_map.size() == m_agent_count) {
             m_all_agents_ready.store(true);
         }
         lck.unlock();
     }
+    // Acknowledge join request
     send_message_helper<marl::join_rsp>(rsp, s);
-    l->log(level::TRACE, "Waiting for all agents to get ready.");
-    while(m_is_running & !m_all_agents_ready) {
-        std::this_thread::sleep_for(std::chrono::seconds{1});
+}
+
+void marl::server::writer(uint32_t agent_id) {
+    /* This thread is supposed to be called after all agents are connected and
+     * ready. So both the queu and socket maps must be already populated.
+     * */
+    flog::logger* l = flog::logger::instance();
+    l->log(level::TRACE, "Initiating writer thread for agent %d...", agent_id);
+    // Search maps for sanity check
+    std::unique_lock<std::mutex> lck(m_maps_lock);
+    std::map<uint32_t, socket_t>::iterator found = m_socket_map.find(agent_id);
+    if(found == m_socket_map.end()) {
+        l->log(level::ERROR_, "Unable to find socket descriptor for agent %d! "
+               "Terminating writer thread...", agent_id);
+        return;
     }
-    l->log(level::TRACE, "All agents are already joined. Sending start to %d...", id);
-    send_start(s);
-    while(m_is_running) {
-        std::unique_ptr<message_base> msg = marl::receive_message(s);
+    socket_t endpoint = found->second;
+    std::map<uint32_t, marl::queue<action_select_req>*>::iterator found_queue =
+        m_request_queue_map.find(agent_id);
+    if(found_queue == m_request_queue_map.end()) {
+        l->log(level::ERROR_, "Unable to find request buffer for agent %d! Terminating...", agent_id);
+        return;
+    }
+    marl::queue<action_select_req>* req_queue = found_queue->second;
+    lck.unlock();
+    // Operate till the end
+    bool has_error = false;
+    while(m_is_running.load() && !has_error) {
+        action_select_req req;
+        bool fetched = req_queue->wait_pop(req, std::chrono::milliseconds{100});
+        if(!fetched) {
+            continue;
+        }
+        if(!send_message_helper<action_select_req>(req, endpoint)) {
+            l->log(level::ERROR_, "Unable to send request for agent %d! Terminating writer thread...",
+                   agent_id);
+            has_error = true;
+        }
+    }
+}
+
+void marl::server::reader(uint32_t agent_id) {
+    /* This thread is supposed to be called after all agents are connected and
+     * ready. So both the queu and socket maps must be already populated.
+     * */
+    flog::logger* l = flog::logger::instance();
+    l->log(level::TRACE, "Sending start to %d...", agent_id);
+
+    std::unique_lock<std::mutex> lck(m_maps_lock);
+    std::map<uint32_t, socket_t>::iterator found = m_socket_map.find(agent_id);
+    if(found == m_socket_map.end()) {
+        l->log(level::ERROR_, "Unable to find socket descriptor for agent %d! "
+               "Terminating reader thread...", agent_id);
+        return;
+    }
+    socket_t endpoint = found->second;
+    lck.unlock();
+    // Send start command if everything is OK
+    send_start(endpoint);
+    while(m_is_running.load()) {
+        std::unique_ptr<message_base> msg = marl::receive_message(endpoint);
         if(!msg) {
             l->log(level::ERROR_, "Unable to read message from remote agent `%d'. "
-                   "Terminating connection...", id);
-            terminate_agent(id);
+                   "Terminating connection...", agent_id);
+            terminate_agent(agent_id);
             return;
         }
         switch(msg->type()) {
@@ -177,32 +238,19 @@ void marl::server::reader(socket_t s) {
                 }
             }
             break;
+            case MARL_TERMINATE_REQ: {
+                marl::terminate_request* r;
+                r = dynamic_cast<marl::terminate_request*>(msg.get());
+                if(r) {
+                    process(*r);
+                }
+            }
+            break;
             default:
                 break;
         }
     }
 }
-
-void marl::server::writer(socket_t s) {
-    flog::logger* l = flog::logger::instance();
-    l->log(level::TRACE, "Initiating writer thread...", s);
-    std::unique_lock<std::mutex> lck(m_maps_lock);
-    //socket_t s = m_socket_map.at(s);
-    while(m_is_running) {
-        marl::action_select_req req;
-        marl::action_select_rsp rsp;
-        std::chrono::milliseconds timeout{5};
-        if(m_request_queue_map.at(s)->wait_pop(req, timeout)) {
-            send_message_helper<action_select_req>(req, s);
-        }
-        if(m_response_queue_map.at(s)->wait_pop(rsp, timeout)) {
-            send_message_helper<action_select_rsp>(rsp, s);
-        }
-    }
-    lck.unlock();
-}
-
-
 
 void marl::server::terminate_agent(uint32_t agent_id) const {
     flog::logger* l = flog::logger::instance();
@@ -212,6 +260,27 @@ void marl::server::terminate_agent(uint32_t agent_id) const {
     lck.unlock();
     cpnet_close(s);
     l->logc(level::TRACE, "Connection closed");
+}
+
+void marl::server::process(const terminate_request& req) const {
+    flog::logger* l = flog::logger::instance();
+    l->log(level::TRACE, "Requesting termination for agent `%d'...", req.agent_id);
+    static std::mutex mtx;
+    std::lock_guard<std::mutex> lck(mtx);
+    static uint32_t count{0};
+    count++;
+    if(count == m_agent_count) {
+        // terminate all
+        l->log(level::TRACE, "All agents requested for disconnect.");
+        for(auto& pair : m_socket_map) {
+            l->log(level::TRACE, "Closing socket for agent `%d'...", pair.first);
+            marl::terminate_response rsp;
+            rsp.agent_id = req.agent_id;
+            send_message_helper<marl::terminate_response>(rsp, pair.second);
+            cpnet_close(pair.second);
+            l->logc(level::TRACE, "Connection closed for agent `%d'...", pair.first);
+        }
+    }
 }
 
 bool marl::server::send_start(socket_t socket) const {
@@ -229,23 +298,31 @@ void marl::server::process(const marl::action_select_req& r) const {
             element.second->push(r);
         }
     };
-    std::for_each(m_request_queue_map.begin(), m_request_queue_map.end(),pusher);
+    std::for_each(m_request_queue_map.begin(), m_request_queue_map.end(), pusher);
 }
 
 void marl::server::process(const marl::action_select_rsp& r) const {
     flog::logger* l = flog::logger::instance();
     l->log(level::TRACE, "Incomming action select response...");
-    l->logc(level::TRACE, "Sender: %d", r.agent_id);
-    l->logc(level::TRACE, "Request Number: %d", r.request_number);
+    l->logc(level::TRACE, "Sender: %d (ID,seq) = (%d, %d)",
+            r.agent_id,
+            r.requester_id, r.request_number);
     // TODO: the key is wrong ...
-    std::pair<uint32_t, uint32_t> key = std::make_pair(r.agent_id, r.request_number);
+    std::lock_guard<std::mutex> lk(m_response_map_lck);
+    std::pair<uint32_t, uint32_t> key = std::make_pair(r.requester_id, r.request_number);
     if(m_response_map.find(key) == m_response_map.end()) {
+        l->log(level::TRACE, "Request key was not found in the map. Insering...");
+        l->logc(level::TRACE, "Request key was not found in the map. (%d, %d)",
+                key.first, key.second);
         m_response_map.insert(std::make_pair(key, new std::vector<action_select_rsp>));
     }
-    m_response_map.at(key)->push_back(r);
-    // iterate over and check if responses are completed or not
     std::vector<action_select_rsp>* vec = m_response_map.at(key);
+    vec->push_back(r);
+    // iterate over and check if responses are completed or not
     if(vec->size() == m_agent_count - 1) {
+        // TODO: Do a sanity check
+        l->log(level::TRACE, "Message queue is completed for (%d, %d)",
+               key.first, key.second);
         action_select_rsp aggregation;
         aggregation.agent_id = 0;
         aggregation.confidence = 0.0;
@@ -255,7 +332,15 @@ void marl::server::process(const marl::action_select_rsp& r) const {
                 aggregation.info.push_back(a);
             }
         }
-        //send_message
+        bool success = send_message_helper<marl::action_select_rsp>(aggregation,
+                       this->m_socket_map.at(r.requester_id));
+        if(!success) {
+            l->log(level::ERROR_, "Unable to send response to %d for request %d",
+                   key.first, key.second);
+        }
+        // cleanup
+        vec->clear();
+        m_response_map.erase(key);
     }
 }
 

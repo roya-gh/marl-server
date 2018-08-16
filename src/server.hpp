@@ -33,6 +33,8 @@
 #include <marl-protocols/response-base.hpp>
 #include <marl-protocols/action-select-request.hpp>
 #include <marl-protocols/action-select-response.hpp>
+#include <marl-protocols/terminate-request.hpp>
+
 #include "threadsafe-queue.hpp"
 
 namespace marl {
@@ -49,15 +51,17 @@ public:
     /**
        Thread callbacks for reading data from remote sockets.
     */
-    void reader(socket_t s);
+    void starter(socket_t s);
     /**
        Thread callbacks for writing data to remote sockets.
     */
-    void writer(socket_t s);
+    void writer(uint32_t agent_id);
+    void reader(uint32_t agent_id);
 private:
     void terminate_agent(uint32_t agent_id) const;
     bool send_start(socket_t socket) const;
     // Process messages
+    void process(const marl::terminate_request&) const;
     void process(const marl::action_select_req&) const;
     void process(const marl::action_select_rsp&) const;
     std::string m_host;
@@ -77,6 +81,7 @@ private:
     /**
        List of all reader threads,
     */
+    std::forward_list<std::thread> m_starters;
     std::forward_list<std::thread> m_readers;
     std::forward_list<std::thread> m_writers;
 
@@ -84,6 +89,8 @@ private:
        Map of (agent id, request number) pairs to a vector of responses. This will
        be used as a buffer to determine completed response vectors.
     */
+
+    mutable std::mutex m_response_map_lck;
     mutable std::map<std::pair<uint32_t, uint32_t>, /* requester id, request id */
             std::vector<action_select_rsp>*> m_response_map;
 
