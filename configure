@@ -4946,12 +4946,12 @@ if test -n "$FLOG_CFLAGS"; then
     pkg_cv_FLOG_CFLAGS="$FLOG_CFLAGS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
-    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libflog >= 1.0\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libflog >= 1.0") 2>&5
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libflog >= 0.1\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libflog >= 0.1") 2>&5
   ac_status=$?
   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_FLOG_CFLAGS=`$PKG_CONFIG --cflags "libflog >= 1.0" 2>/dev/null`
+  pkg_cv_FLOG_CFLAGS=`$PKG_CONFIG --cflags "libflog >= 0.1" 2>/dev/null`
 		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
@@ -4963,12 +4963,12 @@ if test -n "$FLOG_LIBS"; then
     pkg_cv_FLOG_LIBS="$FLOG_LIBS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
-    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libflog >= 1.0\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libflog >= 1.0") 2>&5
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libflog >= 0.1\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libflog >= 0.1") 2>&5
   ac_status=$?
   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_FLOG_LIBS=`$PKG_CONFIG --libs "libflog >= 1.0" 2>/dev/null`
+  pkg_cv_FLOG_LIBS=`$PKG_CONFIG --libs "libflog >= 0.1" 2>/dev/null`
 		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
@@ -4989,14 +4989,14 @@ else
         _pkg_short_errors_supported=no
 fi
         if test $_pkg_short_errors_supported = yes; then
-	        FLOG_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libflog >= 1.0" 2>&1`
+	        FLOG_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libflog >= 0.1" 2>&1`
         else
-	        FLOG_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libflog >= 1.0" 2>&1`
+	        FLOG_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libflog >= 0.1" 2>&1`
         fi
 	# Put the nasty error message in config.log where it belongs
 	echo "$FLOG_PKG_ERRORS" >&5
 
-	as_fn_error $? "Package requirements (libflog >= 1.0) were not met:
+	as_fn_error $? "Package requirements (libflog >= 0.1) were not met:
 
 $FLOG_PKG_ERRORS
 

@@ -44,7 +44,7 @@ AX_CXX_COMPILE_STDCXX_11([noext],[mandatory])
 
 PKG_CHECK_MODULES([MARL_PROTOCOLS], [libmarl_protocols >= 0.1])
 PKG_CHECK_MODULES([CPNET], [libcpnet >= 1.0])
-PKG_CHECK_MODULES([FLOG], [libflog >= 1.0],[])
+PKG_CHECK_MODULES([FLOG], [libflog >= 0.1],[])
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile])
